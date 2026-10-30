@@ -662,6 +662,16 @@ function drawLines() {
 window.addEventListener('resize', () => { if (G.screen === 'battle') drawLines(); });
 
 // ---------- Eventos ----------
+// Confirmación en dos toques (los diálogos confirm() no funcionan en todos los navegadores embebidos).
+let armed = null, armedTimer;
+function confirmTwice(el, act) {
+  if (armed === act) { armed = null; clearTimeout(armedTimer); return true; }
+  armed = act;
+  el.textContent = '¿Seguro? Toca otra vez';
+  clearTimeout(armedTimer);
+  armedTimer = setTimeout(() => { if (armed === act) { armed = null; render(); } }, 3000);
+  return false;
+}
 app.addEventListener('click', e => {
   const el = e.target.closest('[data-act]');
   if (!el || el.disabled) return;
@@ -670,7 +680,7 @@ app.addEventListener('click', e => {
   switch (act) {
     case 'go': G.screen = el.dataset.to; break;
     case 'reset':
-      if (!confirm('¿Borrar todo el progreso?')) return;
+      if (!confirmTwice(el, act)) return;
       G.save = freshSave(); persist(); G.floor = 0; G.node = null; break;
     case 'floor': {
       const i = +el.dataset.i;
@@ -700,7 +710,7 @@ app.addEventListener('click', e => {
     case 'play': assignCard(+el.dataset.i); break;
     case 'fight': resolveTurn(); return;
     case 'speed': G.speed = G.speed === 1 ? 2 : G.speed === 2 ? 4 : 1; break;
-    case 'flee': if (!confirm('¿Retirarse de la recepción?')) return; G.battle = null; G.screen = 'map'; break;
+    case 'flee': if (!confirmTwice(el, act)) return; G.battle = null; G.screen = 'map'; break;
     case 'retry': startBattle(B.node.id); break;
     case 'claim': claimVictory(); return;
     case 'reward-pick': G.reward.chosen = +el.dataset.i; break;
