@@ -87,21 +87,30 @@ BOTONES = {"izq": Button.left, "der": Button.right, "med": Button.middle}
 
 
 def ips_locales():
-    ips = set()
+    """Devuelve (ip_principal, otras_ips).
+
+    La principal es la de la tarjeta de red que sale a Internet (Wi-Fi o
+    cable). Las otras suelen ser adaptadores virtuales (VirtualBox, VPN...).
+    """
+    principal = None
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))  # no envía datos, solo elige la interfaz
-        ips.add(s.getsockname()[0])
+        principal = s.getsockname()[0]
         s.close()
     except OSError:
         pass
+    otras = set()
     try:
         for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
-            ips.add(info[4][0])
+            otras.add(info[4][0])
     except OSError:
         pass
-    ips.discard("127.0.0.1")
-    return sorted(ips) or ["127.0.0.1"]
+    otras -= {"127.0.0.1", principal}
+    otras = sorted(otras)
+    if principal is None:
+        principal = otras.pop(0) if otras else "127.0.0.1"
+    return principal, otras
 
 
 class Sesion:
@@ -279,12 +288,15 @@ def main():
     print("=" * 64)
     print(f"  ESCRITORIO REMOTO - SERVIDOR  ({platform.system()} {platform.release()})")
     print("=" * 64)
-    print(f"  Dirección(es) IP : {', '.join(ips_locales())}")
+    ip, otras = ips_locales()
+    print(f"  IP para conectar : {ip}")
     print(f"  Puerto           : {args.puerto}")
     print(f"  Contraseña       : {args.contrasena}")
     print(f"  Huella TLS       : {huella[:47]}")
     print(f"                     {huella[48:]}")
     print(f"  Modo             : {'solo ver' if args.solo_ver else 'control total'}")
+    if otras:
+        print(f"  (Otras IPs, solo si la anterior no funciona: {', '.join(otras)})")
     print("-" * 64)
     if SO == "mac":
         print("  macOS: da permisos en Ajustes del Sistema > Privacidad y seguridad")

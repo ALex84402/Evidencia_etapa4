@@ -129,7 +129,10 @@ class DialogoConexion(tk.Tk):
         self.estado.grid(row=5, column=0, columnspan=2, pady=(8, 0))
 
     def conectar(self):
-        host = self.v_host.get().strip()
+        # Si se pegan varias IPs ("192.168.1.5, 10.0.0.2") se usa la primera
+        host = self.v_host.get().replace(",", " ").replace(";", " ").split()
+        host = host[0] if host else ""
+        self.v_host.set(host)
         if not host:
             self.estado.config(text="Escribe la IP del equipo remoto")
             return
@@ -142,10 +145,24 @@ class DialogoConexion(tk.Tk):
         self.update_idletasks()
         try:
             self.conexion = Conexion(host, puerto, self.v_clave.get(), self)
+        except socket.gaierror:
+            self._error("IP no válida. Escribe solo una IP, p. ej. 192.168.1.20")
+            return
+        except (socket.timeout, TimeoutError):
+            self._error("Tiempo agotado: revisa que estén en la misma red\n"
+                        "y que el Firewall del servidor permita la conexión")
+            return
+        except ConnectionRefusedError:
+            self._error("Conexión rechazada: ¿está abierto el servidor\n"
+                        "y el puerto es el correcto?")
+            return
         except (OSError, p.ErrorConexion) as e:
-            self.estado.config(text=f"No se pudo conectar: {e}", foreground="#b00020")
+            self._error(f"No se pudo conectar: {e}")
             return
         self.destroy()
+
+    def _error(self, texto):
+        self.estado.config(text=texto, foreground="#b00020")
 
 
 # ==========================================================================
