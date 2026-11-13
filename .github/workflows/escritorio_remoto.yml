@@ -1,0 +1,99 @@
+name: Compilar Escritorio Remoto
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "escritorio_remoto/**"
+      - ".github/workflows/escritorio_remoto.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  compilar:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            nombre: Windows
+          - os: macos-latest
+            nombre: Mac-AppleSilicon
+          - os: macos-15-intel
+            nombre: Mac-Intel
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: escritorio_remoto
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Compilar (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          OCULTOS="--hidden-import pynput.keyboard._win32 --hidden-import pynput.mouse._win32"
+          pyinstaller --noconfirm --onefile --console --name ServidorRemoto $OCULTOS servidor.py
+          pyinstaller --noconfirm --onefile --windowed --name ClienteRemoto cliente.py
+
+      - name: Compilar (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          OCULTOS="--hidden-import pynput.keyboard._darwin --hidden-import pynput.mouse._darwin"
+          pyinstaller --noconfirm --onefile --console --name ServidorRemoto $OCULTOS servidor.py
+          pyinstaller --noconfirm --windowed --name ClienteRemoto \
+            --osx-bundle-identifier com.escritorioremoto.cliente cliente.py
+
+      - name: Empaquetar ZIP
+        run: |
+          DEST="EscritorioRemoto-${{ matrix.nombre }}"
+          mkdir -p "$DEST"
+          cp LEEME.txt README.md "$DEST/"
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            cp dist/ServidorRemoto.exe dist/ClienteRemoto.exe "$DEST/"
+            7z a "$DEST.zip" "$DEST" > /dev/null
+          else
+            cp dist/ServidorRemoto "$DEST/"
+            cp -R dist/ClienteRemoto.app "$DEST/"
+            ditto -c -k --keepParent "$DEST" "$DEST.zip"
+          fi
+          ls -la "$DEST"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EscritorioRemoto-${{ matrix.nombre }}
+          path: escritorio_remoto/EscritorioRemoto-${{ matrix.nombre }}.zip
+
+  publicar:
+    needs: compilar
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: zips
+          merge-multiple: true
+
+      - name: Publicar versión de prueba
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: escritorio-remoto-v${{ github.run_number }}
+          name: Escritorio Remoto (prueba ${{ github.run_number }})
+          prerelease: true
+          target_commitish: ${{ github.sha }}
+          body: |
+            Descarga el ZIP de tu sistema:
+            - **Windows**: EscritorioRemoto-Windows.zip
+            - **Mac con chip M1/M2/M3/M4**: EscritorioRemoto-Mac-AppleSilicon.zip
+            - **Mac con Intel**: EscritorioRemoto-Mac-Intel.zip
+
+            Lee LEEME.txt dentro del ZIP.
+          files: zips/*.zip

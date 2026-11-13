@@ -1,0 +1,25 @@
+ESCRITORIO REMOTO - GUIA RAPIDA
+===============================
+
+1) EN EL EQUIPO QUE VAS A CONTROLAR
+   Windows: doble clic en ServidorRemoto.exe
+   Mac:     doble clic en ServidorRemoto  (se abre en la Terminal)
+   Apunta la IP, el puerto y la contrasena que aparecen.
+
+2) EN TU EQUIPO
+   Windows: doble clic en ClienteRemoto.exe
+   Mac:     doble clic en ClienteRemoto.app
+   Escribe la IP y la contrasena. Compara la "huella" con la del servidor.
+
+AVISOS LA PRIMERA VEZ
+- Windows SmartScreen: "Mas informacion" -> "Ejecutar de todas formas".
+- Firewall de Windows (servidor): "Permitir acceso".
+- Mac: si dice que no se puede abrir, clic derecho -> Abrir -> Abrir.
+  Si aun asi se bloquea: Ajustes del Sistema -> Privacidad y seguridad
+  -> "Abrir igualmente".
+- Mac como servidor: en Ajustes del Sistema -> Privacidad y seguridad activa
+  "Grabacion de pantalla" y "Accesibilidad" para Terminal; luego vuelve a
+  abrir el servidor.
+
+Para otras opciones (puerto, calidad, solo ver...) abre el servidor desde
+una terminal con:  ServidorRemoto --help
